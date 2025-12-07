@@ -109,4 +109,122 @@ defmodule Todos.TasksFixtures do
       overrides: opts
     )
   end
+
+  @doc """
+  Generator for creating a plan board.
+
+  ## Examples
+
+      board = generate(plan_board(user_id: user.id))
+      board = generate(plan_board(user_id: user.id, name: "Sprint Planning"))
+  """
+  def plan_board(opts \\ []) do
+    changeset_generator(
+      Todos.Tasks.PlanBoard,
+      :create,
+      defaults: [
+        name: sequence(:plan_board_name, &"Plan Board #{&1}")
+      ],
+      overrides: opts
+    )
+  end
+
+  @doc """
+  Create a plan board with cards.
+
+  This is a convenience function for setting up test data with cards already on the board.
+
+  ## Examples
+
+      user = generate(user())
+      todo1 = generate(todo(user_id: user.id))
+      todo2 = generate(todo(user_id: user.id))
+      board = create_board_with_cards(user, [todo1, todo2], name: "My Plan")
+  """
+  def create_board_with_cards(user, todos, opts \\ []) do
+    cards =
+      todos
+      |> Enum.with_index()
+      |> Enum.map(fn {todo, index} ->
+        %Todos.Tasks.PlanCard{
+          id: Ash.UUID.generate(),
+          todo_id: todo.id,
+          x: 100.0 + index * 250,
+          y: 100.0,
+          width: 220,
+          height: 140
+        }
+      end)
+
+    attrs =
+      Keyword.merge(
+        [name: "Test Board", user_id: user.id],
+        opts
+      )
+
+    Todos.Tasks.PlanBoard
+    |> Ash.Changeset.for_create(:create, Map.new(attrs))
+    |> Ash.create!()
+    |> Ash.Changeset.for_update(:update_cards, %{cards: cards})
+    |> Ash.update!()
+  end
+
+  @doc """
+  Create a plan board with cards and connections.
+
+  ## Examples
+
+      user = generate(user())
+      todo1 = generate(todo(user_id: user.id))
+      todo2 = generate(todo(user_id: user.id))
+      board = create_board_with_connections(user, [{todo1, todo2}], name: "My Plan")
+  """
+  def create_board_with_connections(user, todo_pairs, opts \\ []) do
+    # Collect all unique todos
+    all_todos =
+      todo_pairs
+      |> Enum.flat_map(fn {from, to} -> [from, to] end)
+      |> Enum.uniq_by(& &1.id)
+
+    # Create cards for all todos
+    cards =
+      all_todos
+      |> Enum.with_index()
+      |> Enum.map(fn {todo, index} ->
+        %Todos.Tasks.PlanCard{
+          id: Ash.UUID.generate(),
+          todo_id: todo.id,
+          x: 100.0 + index * 250,
+          y: 100.0,
+          width: 220,
+          height: 140
+        }
+      end)
+
+    # Create a lookup map from todo_id to card_id
+    todo_to_card = Map.new(cards, fn card -> {card.todo_id, card.id} end)
+
+    # Create connections
+    connections =
+      Enum.map(todo_pairs, fn {from_todo, to_todo} ->
+        %Todos.Tasks.PlanConnection{
+          id: Ash.UUID.generate(),
+          from_card_id: Map.fetch!(todo_to_card, from_todo.id),
+          to_card_id: Map.fetch!(todo_to_card, to_todo.id),
+          label: nil
+        }
+      end)
+
+    attrs =
+      Keyword.merge(
+        [name: "Test Board", user_id: user.id],
+        opts
+      )
+
+    Todos.Tasks.PlanBoard
+    |> Ash.Changeset.for_create(:create, Map.new(attrs))
+    |> Ash.create!()
+    |> Ash.Changeset.for_update(:update, %{cards: cards, connections: connections})
+    |> Ash.update!()
+  end
 end

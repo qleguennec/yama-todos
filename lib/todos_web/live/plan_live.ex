@@ -142,6 +142,14 @@ defmodule TodosWeb.PlanLive do
           data-viewport-y={(@board && @board.viewport_y) || 0}
           data-zoom={(@board && @board.zoom) || 1}
         >
+          <%!-- Infinite dot pattern overlay --%>
+          <div
+            id="canvas-grid"
+            class="absolute inset-0 pointer-events-none opacity-20"
+            style={"background-image: radial-gradient(circle, currentColor 1px, transparent 1px); background-size: #{40 * ((@board && @board.zoom) || 1)}px #{40 * ((@board && @board.zoom) || 1)}px; background-position: #{(@board && @board.viewport_x) || 0}px #{(@board && @board.viewport_y) || 0}px;"}
+          >
+          </div>
+
           <%!-- Canvas controller (transforms for pan/zoom) --%>
           <div
             id="canvas-controller"
@@ -149,150 +157,135 @@ defmodule TodosWeb.PlanLive do
             class="absolute origin-top-left"
             style={"transform: translate(#{@board && @board.viewport_x || 0}px, #{@board && @board.viewport_y || 0}px) scale(#{@board && @board.zoom || 1})"}
           >
-            <%!-- Large canvas area --%>
-            <div class="relative" style="width: 10000px; height: 10000px;">
-              <%!-- Grid pattern --%>
-              <div
-                class="absolute inset-0 opacity-20"
-                style="background-image: radial-gradient(circle, currentColor 1px, transparent 1px); background-size: 40px 40px;"
-              >
-              </div>
+            <%!-- SVG layer for connections --%>
+            <svg class="absolute pointer-events-none overflow-visible">
+              <defs>
+                <marker
+                  id="arrowhead"
+                  markerWidth="10"
+                  markerHeight="7"
+                  refX="9"
+                  refY="3.5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+                </marker>
+              </defs>
 
-              <%!-- SVG layer for connections --%>
-              <svg
-                class="absolute inset-0 pointer-events-none"
-                style="width: 10000px; height: 10000px;"
-              >
-                <defs>
-                  <marker
-                    id="arrowhead"
-                    markerWidth="10"
-                    markerHeight="7"
-                    refX="9"
-                    refY="3.5"
-                    orient="auto"
-                    markerUnits="strokeWidth"
-                  >
-                    <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
-                  </marker>
-                </defs>
-
-                <%= if @board do %>
-                  <%= for conn <- @board.connections do %>
-                    <% from_card = Enum.find(@board.cards, &(&1.id == conn.from_card_id)) %>
-                    <% to_card = Enum.find(@board.cards, &(&1.id == conn.to_card_id)) %>
-                    <%= if from_card && to_card do %>
-                      <g class="connection" data-connection-id={conn.id}>
-                        <path
-                          d={bezier_path(from_card, to_card)}
-                          stroke="currentColor"
-                          stroke-width="2"
-                          fill="none"
-                          marker-end="url(#arrowhead)"
-                          class="text-base-content"
-                        />
-                        <%= if conn.label do %>
-                          <text
-                            x={
-                              (from_card.x + from_card.width / 2 + to_card.x + to_card.width / 2) / 2
-                            }
-                            y={
-                              (from_card.y + from_card.height / 2 + to_card.y + to_card.height / 2) /
-                                2 - 10
-                            }
-                            text-anchor="middle"
-                            class="fill-base-content/70 text-xs font-mono"
-                          >
-                            {conn.label}
-                          </text>
-                        <% end %>
-                      </g>
-                    <% end %>
-                  <% end %>
-                <% end %>
-              </svg>
-
-              <%!-- Cards layer --%>
               <%= if @board do %>
-                <%= for card <- @board.cards do %>
-                  <% todo = Map.get(@todos_map, card.todo_id) %>
-                  <%= if todo do %>
-                    <div
-                      id={"card-#{card.id}"}
-                      class="absolute select-none"
-                      style={"left: #{card.x}px; top: #{card.y}px; width: #{card.width}px;"}
-                      data-card-id={card.id}
-                      phx-hook="PlanCard"
-                    >
-                      <div class="bg-base-200 border-2 border-black shadow-[4px_4px_0_0_black] cursor-move hover:shadow-[2px_2px_0_0_black] hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-                        <%!-- Terminal-style header --%>
-                        <div class="bg-black text-white px-3 py-1.5 flex items-center justify-between font-mono text-[10px]">
-                          <span class="uppercase tracking-wider">
-                            TODO/{String.slice(todo.id, 0, 8)}
-                          </span>
-                          <div class="flex items-center gap-2">
-                            <span class={[
-                              "uppercase",
-                              todo.state == :done && "text-success",
-                              todo.state == :in_progress && "text-primary",
-                              todo.state == :waiting && "text-warning",
-                              todo.state in [:inbox, :pending] && "text-white/70"
-                            ]}>
-                              [{state_label(todo.state)}]
-                            </span>
-                            <button
-                              type="button"
-                              class="hover:text-error transition-colors"
-                              phx-click="remove-card"
-                              phx-value-id={card.id}
-                            >
-                              [X]
-                            </button>
-                          </div>
-                        </div>
-
-                        <%!-- Card content --%>
-                        <div class="p-3">
-                          <h3 class={[
-                            "font-sans font-bold text-sm mb-2 line-clamp-2",
-                            todo.state == :done && "line-through opacity-50"
-                          ]}>
-                            {todo.title}
-                          </h3>
-
-                          <%= if todo.priority do %>
-                            <div class="font-mono text-[10px] uppercase text-base-content/60">
-                              Priority:
-                              <span class={[
-                                todo.priority == :urgent && "text-error",
-                                todo.priority == :high && "text-warning",
-                                todo.priority == :medium && "text-info"
-                              ]}>
-                                {todo.priority}
-                              </span>
-                            </div>
-                          <% end %>
-                        </div>
-
-                        <%!-- Connection dots --%>
-                        <div
-                          class="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-black bg-white cursor-crosshair hover:bg-primary hover:border-primary transition-colors"
-                          data-connection-source={card.id}
-                          phx-click="start-connection"
-                          phx-value-card-id={card.id}
-                        />
-                        <div
-                          class="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-black bg-white cursor-crosshair hover:bg-primary hover:border-primary transition-colors"
-                          data-connection-target={card.id}
-                          phx-click="end-connection"
-                          phx-value-card-id={card.id}
-                        />
-                      </div>
-                    </div>
+                <%= for conn <- @board.connections do %>
+                  <% from_card = Enum.find(@board.cards, &(&1.id == conn.from_card_id)) %>
+                  <% to_card = Enum.find(@board.cards, &(&1.id == conn.to_card_id)) %>
+                  <%= if from_card && to_card do %>
+                    <g class="connection" data-connection-id={conn.id}>
+                      <path
+                        d={bezier_path(from_card, to_card)}
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                        marker-end="url(#arrowhead)"
+                        class="text-base-content"
+                      />
+                      <%= if conn.label do %>
+                        <text
+                          x={(from_card.x + from_card.width / 2 + to_card.x + to_card.width / 2) / 2}
+                          y={
+                            (from_card.y + from_card.height / 2 + to_card.y + to_card.height / 2) /
+                              2 - 10
+                          }
+                          text-anchor="middle"
+                          class="fill-base-content/70 text-xs font-mono"
+                        >
+                          {conn.label}
+                        </text>
+                      <% end %>
+                    </g>
                   <% end %>
                 <% end %>
               <% end %>
-            </div>
+            </svg>
+
+            <%!-- Cards layer --%>
+            <%= if @board do %>
+              <%= for card <- @board.cards do %>
+                <% todo = Map.get(@todos_map, card.todo_id) %>
+                <%= if todo do %>
+                  <div
+                    id={"card-#{card.id}"}
+                    class="absolute select-none"
+                    style={"left: #{card.x}px; top: #{card.y}px; width: #{card.width}px; height: #{card.height}px;"}
+                    data-card-id={card.id}
+                    phx-hook="PlanCard"
+                  >
+                    <div class="bg-base-200 border-2 border-black shadow-[4px_4px_0_0_black] cursor-move hover:shadow-[2px_2px_0_0_black] hover:translate-x-0.5 hover:translate-y-0.5 transition-all h-full">
+                      <%!-- Terminal-style header --%>
+                      <div class="bg-black text-white px-3 py-1.5 flex items-center justify-between font-mono text-[10px]">
+                        <span class="uppercase tracking-wider">
+                          TODO/{String.slice(todo.id, 0, 8)}
+                        </span>
+                        <div class="flex items-center gap-2">
+                          <span class={[
+                            "uppercase",
+                            todo.state == :done && "text-success",
+                            todo.state == :in_progress && "text-primary",
+                            todo.state == :waiting && "text-warning",
+                            todo.state in [:inbox, :pending] && "text-white/70"
+                          ]}>
+                            [{state_label(todo.state)}]
+                          </span>
+                          <button
+                            type="button"
+                            class="hover:text-error transition-colors"
+                            phx-click="remove-card"
+                            phx-value-id={card.id}
+                          >
+                            [X]
+                          </button>
+                        </div>
+                      </div>
+
+                      <%!-- Card content --%>
+                      <div class="p-3">
+                        <h3 class={[
+                          "font-sans font-bold text-sm mb-2 line-clamp-2",
+                          todo.state == :done && "line-through opacity-50"
+                        ]}>
+                          {todo.title}
+                        </h3>
+
+                        <%= if todo.priority do %>
+                          <div class="font-mono text-[10px] uppercase text-base-content/60">
+                            Priority:
+                            <span class={[
+                              todo.priority == :urgent && "text-error",
+                              todo.priority == :high && "text-warning",
+                              todo.priority == :medium && "text-info"
+                            ]}>
+                              {todo.priority}
+                            </span>
+                          </div>
+                        <% end %>
+                      </div>
+
+                      <%!-- Connection dots --%>
+                      <div
+                        class="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-black bg-white cursor-crosshair hover:bg-primary hover:border-primary transition-colors"
+                        data-connection-source={card.id}
+                        phx-click="start-connection"
+                        phx-value-card-id={card.id}
+                      />
+                      <div
+                        class="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-black bg-white cursor-crosshair hover:bg-primary hover:border-primary transition-colors"
+                        data-connection-target={card.id}
+                        phx-click="end-connection"
+                        phx-value-card-id={card.id}
+                      />
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+            <% end %>
           </div>
 
           <%!-- Connection mode indicator --%>
@@ -594,7 +587,12 @@ defmodule TodosWeb.PlanLive do
   end
 
   def handle_event("start-connection", %{"card-id" => card_id}, socket) do
-    {:noreply, assign(socket, :connecting_from, card_id)}
+    # If we're already in connection mode, treat this as end-connection
+    if socket.assigns.connecting_from do
+      handle_event("end-connection", %{"card-id" => card_id}, socket)
+    else
+      {:noreply, assign(socket, :connecting_from, card_id)}
+    end
   end
 
   def handle_event("end-connection", %{"card-id" => to_card_id}, socket) do
@@ -719,7 +717,7 @@ defmodule TodosWeb.PlanLive do
   defp state_label(:done), do: "DONE"
   defp state_label(:cancelled), do: "CANCELLED"
 
-  # Generate a bezier curve path between two cards
+  # Generate an IBM-style orthogonal path between two cards (right-angle connectors)
   defp bezier_path(from_card, to_card) do
     # Start from right edge of from_card
     x1 = from_card.x + from_card.width
@@ -729,13 +727,10 @@ defmodule TodosWeb.PlanLive do
     x2 = to_card.x
     y2 = to_card.y + to_card.height / 2
 
-    # Control points for smooth curve
-    dx = abs(x2 - x1) / 2
-    cx1 = x1 + dx
-    cy1 = y1
-    cx2 = x2 - dx
-    cy2 = y2
+    # Midpoint for the vertical segment
+    mid_x = (x1 + x2) / 2
 
-    "M #{x1} #{y1} C #{cx1} #{cy1}, #{cx2} #{cy2}, #{x2} #{y2}"
+    # IBM-style: horizontal out -> vertical -> horizontal in
+    "M #{x1} #{y1} L #{mid_x} #{y1} L #{mid_x} #{y2} L #{x2} #{y2}"
   end
 end

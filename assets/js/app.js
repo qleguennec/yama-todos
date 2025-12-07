@@ -45,6 +45,7 @@ const Hooks = {
       }
 
       this.controller = this.el.querySelector("[data-canvas-controller]")
+      this.grid = this.el.querySelector("#canvas-grid")
       this.saveTimeout = null
 
       // Pan via mouse drag on empty canvas space
@@ -188,6 +189,11 @@ const Hooks = {
       if (this.controller) {
         this.controller.style.transform = 
           `translate(${this.state.viewportX}px, ${this.state.viewportY}px) scale(${this.state.zoom})`
+      }
+      if (this.grid) {
+        const gridSize = 40 * this.state.zoom
+        this.grid.style.backgroundSize = `${gridSize}px ${gridSize}px`
+        this.grid.style.backgroundPosition = `${this.state.viewportX}px ${this.state.viewportY}px`
       }
     },
 
