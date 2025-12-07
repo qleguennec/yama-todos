@@ -22,6 +22,8 @@ defmodule TodosWeb.Router do
       # Main views
       live "/", GlobalLive
       live "/today", TodayLive
+      live "/plan", PlanLive
+      live "/plan/:id", PlanLive
       live "/todos", TodosLive
       live "/todos/:id", TodoLive
       live "/waiting", WaitingLive

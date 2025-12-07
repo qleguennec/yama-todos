@@ -10,5 +10,6 @@ defmodule Todos.Tasks do
     resource Todos.Tasks.Subtask
     resource Todos.Tasks.RecurringPattern
     resource Todos.Tasks.UserTagOrder
+    resource Todos.Tasks.PlanBoard
   end
 end

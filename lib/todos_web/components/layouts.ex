@@ -42,7 +42,11 @@ defmodule TodosWeb.Layouts do
   """
   def save_indicator(assigns) do
     ~H"""
-    <div id="save-indicator" class="flex items-center font-mono text-xs uppercase" phx-hook="SaveIndicator">
+    <div
+      id="save-indicator"
+      class="flex items-center font-mono text-xs uppercase"
+      phx-hook="SaveIndicator"
+    >
       <span id="save-status"></span>
     </div>
     """
@@ -81,7 +85,7 @@ defmodule TodosWeb.Layouts do
 
   attr :active_tab, :atom,
     default: :global,
-    doc: "the currently active navigation tab (:global, :today, :todos, :waiting, :tags)"
+    doc: "the currently active navigation tab (:global, :today, :plan, :todos, :waiting, :tags)"
 
   attr :fullscreen, :boolean,
     default: false,
@@ -187,6 +191,18 @@ defmodule TodosWeb.Layouts do
             ]}
           >
             Today
+          </.link>
+          <.link
+            navigate={~p"/plan"}
+            class={[
+              "flex-1 py-3 flex items-center justify-center border-t-2 transition-all",
+              if(@active_tab == :plan,
+                do: "border-primary text-primary bg-primary/10",
+                else: "border-transparent text-white/50 hover:text-white hover:bg-white/5"
+              )
+            ]}
+          >
+            Plan
           </.link>
           <.link
             navigate={~p"/todos"}
