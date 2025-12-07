@@ -402,6 +402,23 @@ const Hooks = {
         status.className = "text-error";
       });
     }
+  },
+  ThemeToggle: {
+    mounted() {
+      this.updateLabel();
+      this.el.addEventListener("click", () => {
+        const html = document.documentElement;
+        const current = html.getAttribute("data-theme");
+        const next = current === "dark" ? "light" : "dark";
+        html.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        this.updateLabel();
+      });
+    },
+    updateLabel() {
+      const theme = document.documentElement.getAttribute("data-theme");
+      this.el.textContent = theme === "dark" ? "[LIGHT]" : "[DARK]";
+    }
   }
 }
 

@@ -115,6 +115,13 @@ defmodule TodosWeb.Layouts do
           <div class="flex items-center gap-3">
             <.save_indicator />
             <.disconnect_indicator />
+            <button
+              id="theme-toggle"
+              phx-hook="ThemeToggle"
+              class="px-2 py-1 border border-white/50 hover:bg-white hover:text-black transition-all uppercase tracking-wide text-white/70"
+            >
+              [LIGHT]
+            </button>
             <%= if @courses_todo do %>
               <button
                 id="courses-quick-action"
